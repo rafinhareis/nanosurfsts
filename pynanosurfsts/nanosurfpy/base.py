@@ -1,4 +1,4 @@
-from os import walk,path,mkdir
+from os import walk,path,mkdir,listdir
 from pandas import read_csv, DataFrame
 from numpy import array, arange, log, sqrt,meshgrid, rot90
 from scipy import interpolate
@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import TwoSlopeNorm
 import ipywidgets as widgets
 
-print('Software de visualizacao de arquivos de STS Nanosurf v1.1.5. Arquivos tipo csv (x,y,z) ')
+print('Software de visualizacao de arquivos de STS Nanosurf v1.2.0. Arquivos tipo csv (x,y,z) ')
 print('By Rafael Reis, contato rafinhareis17@gmail.com')
+print('Se sentir no fundo do coracaozinho, poe meu nome no artigo =D')
 
 def didv(x,y):
     h = x[1]-x[0]
@@ -105,6 +106,102 @@ def load_file(path):
 
     return [dataframes,names]
 
+def to_table(path_files):
+    files = listdir(path_files)
+    arq_I = open(path_files+'Dataframe_I_complete.csv','w')
+    arq_didv = open(path_files+'Dataframe_dIdv_complete.csv','w')
+    lines_I = []
+    lines_didv = []
+    marker=False
+    marker2 = True
+    for item in files:
+        if '.txt' in item:
+            df = read_csv(path_files+item)
+            number = ''
+            for car in item:
+                if car=='_':
+                    break
+                number+=car
+            col = df.columns
+            x=df[col[0]];y=df[col[1]];dy=df[col[2]]
+            dy=dy/dy.max()
+            if marker == False:
+                tam = len(x)
+                xlimmin = x.min()
+                xlimmax = x.max()
+                lines_I.append([col[0]+'_'+number,',',col[1]+'_'+number])
+                lines_didv.append([col[0]+'_'+number,',',col[2]+'_'+number])
+                marker = True
+                for j in range(len(x)):
+                    lines_I.append([x[j],',',y[j]])
+                    lines_didv.append([x[j],',',dy[j]])
+            else:
+                if x.min()>=xlimmin:
+                    xlimmin=x.min()
+                if x.max()<=xlimmax:
+                    xlimmax=x.max()
+                lines_I[0] = lines_I[0]+ [',',col[0]+'_'+number,',',col[1]+'_'+number]
+                lines_didv[0] = lines_didv[0]+ [',',col[0]+'_'+number,',',col[2]+'_'+number]
+
+                if len(x)<=tam:
+                    for k in range(len(x)):
+                        lines_I[k+1] = lines_I[k+1]+ [',',x[k],',',y[k]]
+                        lines_didv[k+1] = lines_didv[k+1]+ [',',x[k],',',dy[k]]
+                else:
+                    for k in range(len(x)):
+                        if k <tam:
+                            lines_I[k+1] = lines_I[k+1]+ [',',x[k],',',y[k]]
+                            lines_didv[k+1] = lines_didv[k+1]+ [',',x[k],',',dy[k]]
+                        else:
+                            lines_I.append([x[j],',',y[j]])
+                            lines_didv.append([x[j],',',y[j]])
+                    tam=len(x)
+    for line in lines_I:
+        line = list(map(lambda x:str(x),line))
+        l = ''
+        for c in line:
+            l+=c 
+        arq_I.writelines(l+'\n')
+    arq_I.close()
+    for line in lines_didv:
+        line = list(map(lambda x:str(x),line))
+        l = ''
+        for c in line:
+            l+=c 
+        arq_didv.writelines(l+'\n')
+    arq_didv.close()
+
+    for item in files:
+        if '.txt' in item:
+            df = read_csv(path_files+item)
+            number = ''
+            for car in item:
+                if car=='_':
+                    break
+                number+=car
+
+            col = df.columns
+            x=df[col[0]];y=df[col[1]];dy=df[col[2]]
+            dy=dy/dy.max()
+            if marker2:
+                xnew  = arange(xlimmin,xlimmax,0.01)
+                f = interpolate.interp1d(x,y)
+                g = interpolate.interp1d(x,dy)
+                df2 = DataFrame({'V':xnew,'I_'+number:f(xnew)})
+                df3 = DataFrame({'V':xnew,'didv_'+number:g(xnew)})
+                marker2=False
+            else:
+                f = interpolate.interp1d(x,y)
+                g = interpolate.interp1d(x,dy)
+                df2['I_'+number]=f(xnew)
+                df3['didv_'+number]=g(xnew)
+    df2 = df2.set_index('V')
+    df3 = df3.set_index('V')
+    df2.to_csv(path_files+'Dataframe_I_limeted_by_V.csv')
+    df3.to_csv(path_files+'Dataframe_didv_limeted_by_V.csv')
+
+
+
 class select_sts:
     def __init__(self,path_file,n,smooth = 5,delta = 10):
         self.path_file = path_file
@@ -165,6 +262,7 @@ class select_sts:
                         else:
                             df_new .to_csv(name +'_'+path_file[:-4][ct+1:]+'.txt') 
             print("arquivos salvos na pasta "+ paste)
+            to_table(paste+'/')
         select_sts(path_file,n,smooth,delta)
         
 class Display:

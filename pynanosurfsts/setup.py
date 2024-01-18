@@ -4,7 +4,7 @@ with open("README.md", "r") as arq:
     readme = arq.read()
 
 setup(name='pynanosurfsts',
-    version='1.1.5',
+    version='1.2.0',
     license='MIT License',
     author='Rafael Reis Barreto',
     long_description=readme,
